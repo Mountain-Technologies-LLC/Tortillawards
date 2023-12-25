@@ -1,0 +1,82 @@
+﻿@page "/ballots/create"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Tortillawards.Components.Account
+@using Tortillawards.Data
+
+@attribute [Authorize]
+
+@inject ApplicationDbContext DB
+@inject NavigationManager NavigationManager
+@inject IdentityUserAccessor UserAccessor
+
+<PageTitle>Create</PageTitle>
+
+<StatusMessage Message="@message" />
+<h1>Create</h1>
+
+<h4>Ballot</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm Model="Ballot" method="post" OnValidSubmit="AddBallot" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+            <div class="mb-3">
+                <label for="name" class="form-label">Name:</label>
+                <InputText id="name" @bind-Value="Ballot.Name" class="form-control" />
+                <ValidationMessage For="() => Ballot.Name" class="text-danger" />
+            </div>
+
+            <div class="btn-toolbar mb-5" role="toolbar">
+                <div class="btn-group me-2" role="group">
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+
+                <div class="btn-group me-2" role="group">
+                    <a class="btn btn-link" href="@($"/ballots")">Back to List</a>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private string? message;
+
+    [SupplyParameterFromForm]
+    private InputModel Ballot { get; set; } = new();
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
+    public async Task AddBallot()
+    {
+        var existing = DB.Ballots.Where(x => x.Name == Ballot.Name);
+
+        if (existing.Any())
+        {
+            message = $"Error: '{Ballot.Name}' already exists.";
+            return;
+        }
+
+        var ballot = new Ballot()
+        {
+            Name = Ballot.Name,
+            CreatedBy = await UserAccessor.GetRequiredUserAsync(HttpContext),
+        };
+
+        DB.Ballots.Add(ballot);
+        await DB.SaveChangesAsync();
+        NavigationManager.NavigateTo($"/ballots/details?id={ballot.Id}");
+    }
+
+    private sealed class InputModel
+    {
+        [Required(AllowEmptyStrings = false)]
+        public string Name { get; set; } = string.Empty;
+    }
+}

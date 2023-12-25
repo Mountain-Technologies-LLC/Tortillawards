@@ -1,0 +1,86 @@
+﻿@page "/ballots/details"
+
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.EntityFrameworkCore
+@using Tortillawards.Data
+
+@inject ApplicationDbContext DB
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(@ballot?.Name ?? "Ballot Details")</PageTitle>
+
+@if (ballot is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h1>
+        @ballot.Name
+        <small class="text-body-secondary fs-4 fw-light">By:</small>
+        <small class="text-body-secondary">@ballot.CreatedBy</small>
+    </h1>
+
+    <div class="btn-toolbar mb-5" role="toolbar">
+        <div class="btn-group me-2" role="group">
+            <a type="button" class="btn btn-light" href="@($"/ballots/edit?id={ballot.Id}")">Edit</a>
+        </div>
+
+        <div class="btn-group me-2" role="group">
+            <a type="button" class="btn btn-outline-danger" href="@($"ballots/delete?id={ballot.Id}")">Delete</a>
+        </div>
+    </div>
+
+    <div class="row row-cols-auto mb-2">
+        <div class="col fs-4">
+            Awards
+            <small class="text-body-secondary">Count: @(awards?.Count() ?? 0)</small>
+        </div>
+        <a class="col btn btn-link ms-1 link-primary fw-semibold text-decoration-none" href="@($"awards/create?ballotId={ballot.Id}")">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-plus-circle-fill me-1" style="vertical-align: -.125em;" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z" />
+            </svg>
+            New Award
+        </a>
+    </div>
+
+    <QuickGrid Class="table" Items="awards">
+        <TemplateColumn Class="p-3" Context="award">
+            <h5>
+                @award.Name
+                <small class="text-body-secondary fs-6 fw-light">Total Nominations:</small>
+                <small class="text-body-secondary">@award.Nominations.Count()</small>
+            </h5>
+
+            <div class="btn-toolbar mb-2" role="toolbar">
+                <div class="btn-group me-2" role="group">
+                    <a type="button" class="btn btn-light" href="@($"awards/details?id={award.Id}")">Details</a>
+                </div>
+            </div>
+        </TemplateColumn>
+    </QuickGrid>
+}
+
+@code {
+    Ballot? ballot;
+    IQueryable<Award>? awards;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ballot = await DB.Ballots
+            .Include(x => x.CreatedBy)
+            .Include(x => x.Awards)
+                .ThenInclude(x => x.Nominations)
+            .FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (ballot is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+
+        awards = ballot!.Awards.AsQueryable();
+    }
+}

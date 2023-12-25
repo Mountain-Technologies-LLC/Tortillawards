@@ -1,0 +1,103 @@
+﻿@page "/ballots"
+
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.EntityFrameworkCore
+@using Tortillawards.Data
+
+@inject ApplicationDbContext DB
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+@rendermode InteractiveServer
+
+<PageTitle>Ballots</PageTitle>
+
+<div class="clearfix">
+    <h1 class="float-start">Ballots</h1>
+</div>
+
+<p class="clearfix">
+    <AuthorizeView>
+        <p class="btn-group float-start" role="group">
+            <input type="radio" class="btn-check" name="options-base" id="allBallots" autocomplete="off" @onclick="ToggleShowAllAsync" checked>
+            <label class="btn btn-outline-primary" for="allBallots">All Ballots</label>
+
+            <input type="radio" class="btn-check" name="options-base" id="yourBallots" autocomplete="off" @onclick="ToggleShowAllAsync">
+            <label class="btn btn-outline-primary" for="yourBallots">Your Ballots</label>
+        </p>
+    </AuthorizeView>
+    <a class="btn btn-link ms-2 link-primary float-start fw-semibold text-decoration-none" href="ballots/create">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-plus-circle-fill me-1" style="vertical-align: -.125em;" viewBox="0 0 16 16">
+            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z" />
+        </svg>
+        New Ballot
+    </a>
+</p>
+
+<div class="list-group list-group-checkable d-grid gap-2 border-0 shadow-none">
+    @foreach (var ballot in Ballots)
+    {
+        <a href="@($"ballots/vote?id={ballot.Id}")" class="list-group-item rounded-0 py-3 border-0">
+            <div class="row align-items-center">
+                <div class="col-12 col-md-auto p-0">
+                    <h6 class="mb-1">@ballot.Name</h6>
+                    <small class="text-body-secondary">By: @ballot.CreatedBy</small>
+                </div>
+                <div class="col p-0 pt-3 pt-md-0 align-items-center text-md-end">
+                    @if (!showAll)
+                    {
+                        <div class="btn-group btn-group-sm me-2" role="group">
+                            <a type="button" class="btn btn-primary" href="@($"ballots/details?id={ballot.Id}")">Details</a>
+                        </div>
+                    }
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a type="button" class="btn btn-light" href="@($"ballots/results?id={ballot.Id}")">Results</a>
+                    </div>
+                </div>
+            </div>
+        </a>
+    }
+</div>
+
+@code {
+    bool showAll = true;
+
+    List<Ballot> Ballots = [];
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Ballots = await DB.Ballots
+            .Include(x => x.CreatedBy)
+            .ToListAsync();
+    }
+
+    private async Task ToggleShowAllAsync()
+    {
+        showAll = !showAll;
+
+        if (showAll)
+        {
+            Ballots = await DB.Ballots
+                .Include(x => x.CreatedBy)
+                .ToListAsync();
+        }
+        else if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            var user = authState?.User;
+
+            if (user?.Identity is not null && user.Identity.IsAuthenticated)
+            {
+                Ballots = await DB.Ballots
+                    .Include(x => x.CreatedBy)
+                    .Where(x => x.CreatedBy.Email == user.Identity.Name || x.CreatedBy.Email == "TestEmail")
+                    .ToListAsync();
+            }
+        }
+    }
+}

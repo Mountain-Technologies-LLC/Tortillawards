@@ -1,0 +1,83 @@
+﻿@page "/ballots/delete"
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using Tortillawards.Data
+
+@attribute [Authorize]
+
+@inject ApplicationDbContext DB
+@inject NavigationManager NavigationManager
+
+<PageTitle>Delete</PageTitle>
+
+<h1>Delete</h1>
+
+<h3>Are you sure you want to delete this?</h3>
+<div>
+    <h4>Ballot</h4>
+    <hr />
+    @if (ballot is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Name</dt>
+            <dd class="col-sm-10">@ballot.Name</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">CreatedBy</dt>
+            <dd class="col-sm-10">@ballot.CreatedBy</dd>
+        </dl>
+        <EditForm method="post" Model="ballot" OnValidSubmit="DeleteBallot" FormName="delete" Enhance>
+            <div class="btn-toolbar mb-5" role="toolbar">
+                <div class="btn-group me-2" role="group">
+                    <button type="submit" class="btn btn-danger" disabled="@(ballot is null)">Delete</button>
+                </div>
+
+                <div class="btn-group me-2" role="group">
+                    <a type="button" class="btn btn-link" href="@($"/ballots/details?id={Id}")">Back to Ballot</a>
+                </div>
+            </div>
+        </EditForm>
+    }
+</div>
+
+@code {
+    Ballot? ballot;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ballot = await DB.Ballots
+            .Include(x => x.CreatedBy)
+            .FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (ballot is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+
+        var authState = await authenticationState;
+        //var user = authState?.User;
+        /*
+        if (user?.Identity == null || ballot!.CreatedBy.Email != user.Identity.Name)
+        {
+            NavigationManager.NavigateTo("unauthorized");
+        }
+        */
+    }
+
+    public async Task DeleteBallot()
+    {
+        DB.Ballots.Remove(ballot!);
+        await DB.SaveChangesAsync();
+        NavigationManager.NavigateTo("/ballots");
+    }
+}

@@ -1,0 +1,140 @@
+﻿@page "/awards/details"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.EntityFrameworkCore
+@using Tortillawards.Data
+
+@inject ApplicationDbContext DB
+@inject NavigationManager NavigationManager
+
+@rendermode InteractiveServer
+
+<PageTitle>@(@award?.Name ?? "Award Details")</PageTitle>
+
+@if (award is null)
+{
+    <p><em>Loading...</em></p>
+}
+else {
+    <h1>
+        @award.Name
+        <small class="text-body-secondary fs-4 fw-light">Projected Winner:</small>
+        <small class="text-body-secondary">@projectedWinner</small>
+    </h1>
+
+    <div class="btn-toolbar mb-5" role="toolbar">
+        <div class="btn-group me-2" role="group">
+            <a type="button" class="btn btn-light" href="@($"/awards/edit?id={award.Id}")">Edit</a>
+        </div>
+
+        <div class="btn-group me-2" role="group">
+            <a type="button" class="btn btn-outline-danger" href="@($"awards/delete?id={award.Id}")">Delete</a>
+        </div>
+
+        <div class="btn-group me-2" role="group">
+            <a type="button" class="btn btn-link" href="@($"/ballots/details?id={ballotId}")">Back to Ballot Details</a>
+        </div>
+    </div>
+
+    <h4>
+        Nominations
+        <small class="text-body-secondary fs-6 fw-light">Count:</small>
+        <small class="text-body-secondary">@(award.Nominations?.Count() ?? 0)</small>
+    </h4>
+
+    <QuickGrid Class="table table-sm" Items="nominations">
+        <PropertyColumn Property="@(c => c.Name)" Sortable="true" />
+        <PropertyColumn Property="@(c => c.Votes.Count())" Sortable="true" Title="Votes" />
+        <TemplateColumn Context="nomination">
+            <a href="@($"nominations/delete?id={nomination.Id}")" class="text-danger text-decoration-none">
+                Delete
+            </a>
+        </TemplateColumn>
+    </QuickGrid>
+
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Nomination" OnValidSubmit="AddNominationAsync" FormName="create" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" />
+                <div class="mb-3">
+                    <label for="name" class="form-label">Add Nomination:</label>
+                    <InputText id="name" @bind-Value="Nomination.Name" class="form-control" placeholder="Name" />
+                    <ValidationMessage For="() => Nomination.Name" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Add</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    Award? award;
+    IQueryable<Nomination>? nominations;
+    int ballotId;
+
+    string projectedWinner = string.Empty;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var ballots = await DB.Ballots
+            .Include(x => x.Awards.Where(x => x.Id == Id))
+                .ThenInclude(x => x.Nominations)
+                    .ThenInclude(x => x.Votes)
+            .Where(x => x.Awards.Any(x => x.Id == Id))
+            .AsNoTracking()
+            .ToListAsync();
+
+        if (ballots is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+
+        var ballot = ballots!.Single();
+
+        award = ballot!.Awards.Single();
+
+        ballotId = ballot.Id;
+        nominations = award!.Nominations
+            .AsQueryable();
+
+        projectedWinner = award!.Nominations.MaxBy(x => x.Votes.Count())?.Name ?? string.Empty;
+    }
+
+    // Add Nomination Form
+    [SupplyParameterFromForm]
+    private InputModel Nomination { get; set; } = new();
+
+    private async Task AddNominationAsync()
+    {
+        var nomination = new Nomination()
+        {
+            Name = Nomination.Name,
+        };
+
+        DB.Awards
+            .Single(x => x.Id == Id)
+            .Nominations
+            .Add(nomination);
+
+        Nomination.Name = string.Empty;
+
+        await DB.SaveChangesAsync();
+
+        nominations = (await DB.Awards
+            .Include(x => x.Nominations)
+            .SingleAsync(m => m.Id == Id))
+            .Nominations
+            .AsQueryable();
+    }
+
+    private sealed class InputModel
+    {
+        [Required(AllowEmptyStrings = false)]
+        public string Name { get; set; } = string.Empty;
+    }
+}

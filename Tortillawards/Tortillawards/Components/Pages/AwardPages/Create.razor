@@ -1,0 +1,68 @@
+﻿@page "/awards/create"
+
+@using System.ComponentModel.DataAnnotations
+@using Tortillawards.Data
+
+@inject ApplicationDbContext DB
+@inject NavigationManager NavigationManager
+
+<PageTitle>Create</PageTitle>
+
+<h1>Create</h1>
+
+<h4>Award</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Award" OnValidSubmit="AddAwardAsync" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+            <div class="mb-3">
+                <label for="name" class="form-label">Name:</label> 
+                <InputText id="name" @bind-Value="Award.Name" class="form-control" /> 
+                <ValidationMessage For="() => Award.Name" class="text-danger" /> 
+            </div>
+
+            <div class="btn-toolbar mb-5" role="toolbar">
+                <div class="btn-group me-2" role="group">
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+
+                <div class="btn-group me-2" role="group">
+                    <a class="btn btn-link" href="@($"/ballots")">Back to List</a>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private InputModel Award { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    public int BallotId { get; set; }
+
+    // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
+    public async Task AddAwardAsync()
+    {
+        var award = new Award()
+        {
+            Name = Award.Name,
+        };
+
+        DB.Ballots
+            .Single(x => x.Id == BallotId)
+            .Awards
+            .Add(award);
+
+        await DB.SaveChangesAsync();
+        NavigationManager.NavigateTo($"/ballots/details?id={BallotId}");
+    }
+
+    private sealed class InputModel
+    {
+        [Required(AllowEmptyStrings = false)]
+        public string Name { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,56 @@
+﻿@page "/ballots/vote"
+
+@using Microsoft.AspNetCore.Authorization
+@using Tortillawards.Components.Pages.BallotPages.Shared
+@using Tortillawards.Data
+@using Tortillawards.Services
+
+@attribute [Authorize]
+
+@inject NavigationManager NavigationManager
+@inject BallotService BallotService
+
+@rendermode InteractiveServer
+
+<PageTitle>@(@ballot?.Name ?? "Ballot Details")</PageTitle>
+
+@if (ballot is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h1>
+        @ballot.Name
+        <small class="text-body-secondary fs-4 fw-light">By:</small>
+        <small class="text-body-secondary">@ballot.CreatedBy</small>
+    </h1>
+
+    <br />
+
+    @foreach (var award in Awards)
+    {
+        <AwardForm Award="@award" VotedNominationId="@award.Nominations.FirstOrDefault(x => x.Votes.Any())?.Id" />
+    }
+}
+
+@code {
+    Ballot? ballot;
+
+    public required List<Award> Awards { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ballot ??= await BallotService.GetBallotByIdAsync(Id);
+
+        if (ballot is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+
+        Awards ??= ballot?.Awards ?? [];
+    }
+}
