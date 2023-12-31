@@ -12,9 +12,10 @@
 
 <PageTitle>Log in</PageTitle>
 
-<h1>Log in</h1>
-<div class="row">
-    <div class="col-md-4">
+<div class="row justify-content-center">
+    <div class="col-sm-11 col-md-10 col-lg-8 col-xl-7 col-xxl-6">
+        <h1>Log in</h1>
+
         <section>
             <StatusMessage Message="@errorMessage" />
             <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
@@ -93,6 +94,12 @@
         if (result.Succeeded)
         {
             Logger.LogInformation("User logged in.");
+
+            if (String.IsNullOrWhiteSpace(ReturnUrl))
+            {
+                ReturnUrl = "ballots";
+            }
+
             RedirectManager.RedirectTo(ReturnUrl);
         }
         else if (result.RequiresTwoFactor)
