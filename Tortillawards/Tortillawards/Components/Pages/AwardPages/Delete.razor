@@ -1,7 +1,10 @@
 ﻿@page "/awards/delete"
 
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using Tortillawards.Data
+
+@attribute [Authorize]
 
 @inject ApplicationDbContext DB
 @inject NavigationManager NavigationManager

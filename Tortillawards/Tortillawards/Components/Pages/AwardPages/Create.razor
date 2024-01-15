@@ -1,7 +1,10 @@
 ﻿@page "/awards/create"
 
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
 @using Tortillawards.Data
+
+@attribute [Authorize]
 
 @inject ApplicationDbContext DB
 @inject NavigationManager NavigationManager
@@ -18,9 +21,9 @@
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" />
             <div class="mb-3">
-                <label for="name" class="form-label">Name:</label> 
-                <InputText id="name" @bind-Value="Award.Name" class="form-control" /> 
-                <ValidationMessage For="() => Award.Name" class="text-danger" /> 
+                <label for="name" class="form-label">Name:</label>
+                <InputText id="name" @bind-Value="Award.Name" class="form-control" />
+                <ValidationMessage For="() => Award.Name" class="text-danger" />
             </div>
 
             <div class="btn-toolbar mb-5" role="toolbar">
