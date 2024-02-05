@@ -53,13 +53,33 @@ else
     [SupplyParameterFromForm]
     public Award? Award { get; set; }
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        Console.WriteLine("Name: ");
         Award ??= await DB.Awards.FirstOrDefaultAsync(m => m.Id == Id);
 
         if (Award is null)
         {
             NavigationManager.NavigateTo("notfound");
+        }
+
+        var ballot = await DB.Ballots
+            .Include(x => x.CreatedBy)
+            .Where(x => x.Awards.Any(x => x.Id == Id))
+            .AsNoTracking()
+            .SingleOrDefaultAsync();
+
+        var authState = await authenticationState;
+
+        var user = authState!.User;
+
+        if (ballot!.CreatedBy.Email != user.Identity.Name)
+        {
+            Console.WriteLine("Not Creator");
+            NavigationManager.NavigateTo("/error");
         }
     }
 
@@ -67,6 +87,23 @@ else
     // For more details, see https://aka.ms/RazorPagesCRUD.
     public async Task UpdateAward()
     {
+        var ballot = await DB.Ballots
+            .Include(x => x.CreatedBy)
+            .Include(x => x.Awards.Where(x => x.Id == Id))
+            .Where(x => x.Awards.Any(x => x.Id == Id))
+            .AsNoTracking()
+            .SingleOrDefaultAsync();
+
+        var authState = await authenticationState;
+
+        var user = authState!.User;
+
+        if (ballot!.CreatedBy.Email != user.Identity.Name)
+        {
+            Console.WriteLine("Not Creator");
+            NavigationManager.NavigateTo("/error");
+        }
+
         DB.Attach(Award!).State = EntityState.Modified;
 
         try

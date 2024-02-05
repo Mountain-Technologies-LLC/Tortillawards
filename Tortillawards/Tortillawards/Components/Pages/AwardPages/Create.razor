@@ -2,6 +2,7 @@
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
 @using Tortillawards.Data
 
 @attribute [Authorize]
@@ -46,6 +47,9 @@
     [SupplyParameterFromQuery]
     public int BallotId { get; set; }
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
     // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
     public async Task AddAwardAsync()
     {
@@ -53,6 +57,21 @@
         {
             Name = Award.Name,
         };
+
+        var ballot = await DB.Ballots
+            .Include(x => x.CreatedBy)
+            .AsNoTracking()
+            .SingleAsync(m => m.Id == BallotId);
+
+        var authState = await authenticationState;
+
+        var user = authState!.User;
+
+        if (ballot!.CreatedBy.Email != user.Identity.Name)
+        {
+            Console.WriteLine("Not Creator");
+            NavigationManager.NavigateTo("/error");
+        }
 
         DB.Ballots
             .Single(x => x.Id == BallotId)

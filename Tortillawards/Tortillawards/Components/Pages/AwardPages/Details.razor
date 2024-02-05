@@ -79,25 +79,37 @@ else {
 
     string projectedWinner = string.Empty;
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
     [SupplyParameterFromQuery]
     public int Id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        var ballots = await DB.Ballots
+        var ballot = await DB.Ballots
+            .Include(x => x.CreatedBy)
             .Include(x => x.Awards.Where(x => x.Id == Id))
                 .ThenInclude(x => x.Nominations)
                     .ThenInclude(x => x.Votes)
             .Where(x => x.Awards.Any(x => x.Id == Id))
             .AsNoTracking()
-            .ToListAsync();
+            .SingleOrDefaultAsync();
 
-        if (ballots is null)
+        if (ballot is null)
         {
             NavigationManager.NavigateTo("notfound");
         }
 
-        var ballot = ballots!.Single();
+        var authState = await authenticationState;
+
+        var user = authState!.User;
+
+        if (ballot!.CreatedBy.Email != user.Identity.Name)
+        {
+            Console.WriteLine("Not Creator");
+            NavigationManager.NavigateTo("/error");
+        }
 
         award = ballot!.Awards.Single();
 
@@ -119,6 +131,22 @@ else {
             Name = Nomination.Name,
         };
 
+        var ballot = await DB.Ballots
+            .Include(x => x.CreatedBy)
+            .Where(x => x.Awards.Any(x => x.Id == Id))
+            .AsNoTracking()
+            .SingleOrDefaultAsync();
+
+        var authState = await authenticationState;
+
+        var user = authState!.User;
+
+        if (ballot!.CreatedBy.Email != user.Identity.Name)
+        {
+            Console.WriteLine("Not Creator");
+            NavigationManager.NavigateTo("/error");
+        }
+
         DB.Awards
             .Single(x => x.Id == Id)
             .Nominations
@@ -130,7 +158,7 @@ else {
 
         nominations = (await DB.Awards
             .Include(x => x.Nominations)
-            .SingleAsync(m => m.Id == Id))
+            .SingleAsync(x => x.Id == Id))
             .Nominations
             .AsQueryable();
     }

@@ -65,17 +65,28 @@
         }
 
         var authState = await authenticationState;
-        //var user = authState?.User;
-        /*
-        if (user?.Identity == null || ballot!.CreatedBy.Email != user.Identity.Name)
+
+        var user = authState!.User;
+
+        if (ballot!.CreatedBy.Email != user.Identity.Name)
         {
-            NavigationManager.NavigateTo("unauthorized");
+            Console.WriteLine("Not Creator");
+            NavigationManager.NavigateTo("/error");
         }
-        */
     }
 
     public async Task DeleteBallot()
     {
+        var authState = await authenticationState;
+
+        var user = authState!.User;
+
+        if (ballot!.CreatedBy.Email != user.Identity.Name)
+        {
+            Console.WriteLine("Not Creator");
+            NavigationManager.NavigateTo("/error");
+        }
+
         DB.Ballots.Remove(ballot!);
         await DB.SaveChangesAsync();
         NavigationManager.NavigateTo("/ballots");

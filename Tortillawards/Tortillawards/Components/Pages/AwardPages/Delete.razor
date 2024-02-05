@@ -43,6 +43,9 @@
 @code {
     Award? award;
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
     [SupplyParameterFromQuery]
     public int Id { get; set; }
 
@@ -54,12 +57,48 @@
         {
             NavigationManager.NavigateTo("notfound");
         }
+
+        var ballot = await DB.Ballots
+            .Include(x => x.CreatedBy)
+            .Include(x => x.Awards)
+            .Where(x => x.Awards.Any(x => x.Id == Id))
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        var authState = await authenticationState;
+
+        var user = authState!.User;
+
+        if (ballot!.CreatedBy.Email != user.Identity.Name)
+        {
+            Console.WriteLine("Not Creator");
+            NavigationManager.NavigateTo("/error");
+        }
     }
 
     public async Task DeleteAward()
     {
+        var ballot = await DB.Ballots
+            .Include(x => x.CreatedBy)
+            .Include(x => x.Awards)
+            .Where(x => x.Awards.Any(x => x.Id == Id))
+            .AsNoTracking()
+            .SingleOrDefaultAsync();
+        Console.WriteLine("wdwsdsdfsafsdfsdfsdfsfs");
+
+
+        var authState = await authenticationState;
+
+        var user = authState!.User;
+
+        if (ballot!.CreatedBy.Email != user.Identity.Name)
+        {
+            Console.WriteLine("Not Creator");
+            NavigationManager.NavigateTo("/error");
+        }
+
         DB.Awards.Remove(award!);
         await DB.SaveChangesAsync();
-        NavigationManager.NavigateTo("/ballots");
+        NavigationManager.NavigateTo($"/ballots/details?id={ballot.Id}");
     }
 }

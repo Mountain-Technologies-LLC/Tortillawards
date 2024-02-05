@@ -1,7 +1,10 @@
 ﻿@page "/nominations/delete"
 
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using Tortillawards.Data
+
+@attribute [Authorize]
 
 @inject ApplicationDbContext DB
 @inject NavigationManager NavigationManager
@@ -45,6 +48,9 @@
 
     private int awardId;
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
     [SupplyParameterFromQuery]
     public int Id { get; set; }
 
@@ -56,6 +62,23 @@
         {
             NavigationManager.NavigateTo("notfound");
         }
+
+        var ballot = await DB.Ballots
+            .Include(x => x.CreatedBy)
+            .Include(x => x.Awards)
+                .ThenInclude(x => x.Nominations.Where(x => x.Id == Id))
+            .AsNoTracking()
+            .SingleOrDefaultAsync();
+
+        var authState = await authenticationState;
+
+        var user = authState!.User;
+
+        if (ballot!.CreatedBy.Email != user.Identity.Name)
+        {
+            Console.WriteLine("Not Creator");
+            NavigationManager.NavigateTo("/error");
+        }
     }
 
     public async Task DeleteNomination()
@@ -66,7 +89,7 @@
 
         DB.Nominations.Remove(nomination!);
         await DB.SaveChangesAsync();
-            
+
         NavigationManager.NavigateTo($"/awards/details?id={awardId}");
     }
 

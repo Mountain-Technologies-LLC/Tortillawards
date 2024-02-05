@@ -95,7 +95,7 @@
             {
                 Ballots = await DB.Ballots
                     .Include(x => x.CreatedBy)
-                    .Where(x => x.CreatedBy.Email == user.Identity.Name || x.CreatedBy.Email == "TestEmail")
+                    .Where(x => x.CreatedBy.Email == user.Identity.Name)
                     .ToListAsync();
             }
         }
