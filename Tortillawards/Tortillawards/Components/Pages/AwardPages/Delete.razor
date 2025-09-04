@@ -51,7 +51,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        award = await DB.Awards.FirstOrDefaultAsync(m => m.Id == Id);
+        award = await DB.Awards
+            .FirstOrDefaultAsync(m => m.Id == Id);
 
         if (award is null)
         {
@@ -84,8 +85,6 @@
             .Where(x => x.Awards.Any(x => x.Id == Id))
             .AsNoTracking()
             .SingleOrDefaultAsync();
-        Console.WriteLine("wdwsdsdfsafsdfsdfsdfsfs");
-
 
         var authState = await authenticationState;
 
